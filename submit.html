@@ -91,7 +91,8 @@
           <label class="block text-sm font-medium text-slate-300 mb-1.5">
             Email <span class="text-red-400">*</span>
           </label>
-          <input type="email" id="input-email" placeholder="jane@example.com" class="form-input" required>
+          <input type="email" id="input-email" placeholder="jane@underdogfantasy.com" class="form-input" required>
+          <p class="text-xs text-slate-500 mt-1">Please use your Underdog email.</p>
         </div>
       </div>
 
@@ -240,9 +241,8 @@
         html += `<optgroup label="${escHtml(group)}">`;
         for (const team of groupTeams) {
           const disabled = excludedDisplayNames.includes(team.displayName) && team.displayName !== currentValue;
-          const pts = `max ${calculateTeamPoints(team.seed, 6)} pts`;
           html += `<option value="${escHtml(team.displayName)}" ${disabled ? 'disabled' : ''}>
-            ${escHtml(team.displayName)} (up to ${pts})
+            ${escHtml(team.displayName)}
           </option>`;
         }
         html += '</optgroup>';
@@ -412,9 +412,10 @@
           tod,
         };
 
+        // Use text/plain to avoid CORS preflight issues with Google Apps Script
         const response = await fetch(cfg.gasEndpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'text/plain' },
           body: JSON.stringify(payload),
         });
 
