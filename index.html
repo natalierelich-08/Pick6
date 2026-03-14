@@ -236,33 +236,34 @@
       document.getElementById('refresh-icon').textContent = '⟳';
 
       try {
-        // Fetch entries and scores in parallel
-        const [entriesResult, espnResult] = await Promise.allSettled([
-          fetchEntries(cfg.sheetsCsvUrl),
-          cfg.useManualOverrides
-            ? Promise.resolve({ teamResults: AppConfig.getOverrides(), completedGames: 0 })
-            : ESPNAPI.fetchResults(cfg.tournamentYear, force, pick6Teams),
-        ]);
+        // Fetch entries first, render immediately, then layer in ESPN scores
+        const entriesResult = await fetchEntries(cfg.sheetsCsvUrl).catch(e => { throw new Error('Could not load entries: ' + e.message); });
+        allEntries = entriesResult;
 
-        if (entriesResult.status === 'fulfilled') {
-          allEntries = entriesResult.value;
-        } else {
-          throw new Error('Could not load entries: ' + entriesResult.reason?.message);
-        }
-
-        if (espnResult.status === 'fulfilled') {
-          teamResults = espnResult.value.teamResults || {};
-          const gameCount = espnResult.value.completedGames || 0;
-          document.getElementById('games-count').textContent = `${gameCount} games tracked`;
-          document.getElementById('games-count').classList.remove('hidden');
-        } else {
-          console.warn('ESPN fetch failed, scoring with 0 wins:', espnResult.reason?.message);
-          teamResults = {};
-        }
-
+        // Render leaderboard right away with whatever scores we have (0 wins until ESPN loads)
         scoredEntries = scoreAllEntries(allEntries, teamResults);
         renderLeaderboard();
         renderTeamAnalysis();
+        setStatus('Entries loaded, fetching scores…', 'yellow', true);
+
+        // Now fetch ESPN scores in the background
+        try {
+          const espnResult = cfg.useManualOverrides
+            ? { teamResults: AppConfig.getOverrides(), completedGames: 0 }
+            : await ESPNAPI.fetchResults(cfg.tournamentYear, force, pick6Teams);
+
+          teamResults = espnResult.teamResults || {};
+          const gameCount = espnResult.completedGames || 0;
+          document.getElementById('games-count').textContent = `${gameCount} games tracked`;
+          document.getElementById('games-count').classList.remove('hidden');
+
+          // Re-render with real scores
+          scoredEntries = scoreAllEntries(allEntries, teamResults);
+          renderLeaderboard();
+          renderTeamAnalysis();
+        } catch (e) {
+          console.warn('ESPN fetch failed, showing entries without scores:', e.message);
+        }
 
         const ts = new Date().toLocaleTimeString();
         setStatus(`Updated ${ts}`, 'green');

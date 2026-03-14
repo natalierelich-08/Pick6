@@ -16,13 +16,12 @@ const ESPNAPI = {
 
   /**
    * Returns all tournament dates for a given year as YYYYMMDD strings.
-   * Covers First Four through Championship (~March 18 – April 8).
+   * Only returns dates up to today — no point fetching future dates.
    */
   getTournamentDates(year) {
     const dates = [];
-    // Start from March 16 (buffer) through April 9
-    const start = new Date(year, 2, 16);
-    const end   = new Date(year, 3, 9);
+    const start = new Date(year, 2, 16); // March 16
+    const end   = new Date(Math.min(new Date(year, 3, 9), Date.now())); // April 9 or today, whichever is earlier
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -55,11 +54,13 @@ const ESPNAPI = {
     // Fetch each tournament date (parallel batches of 5)
     for (let i = 0; i < dates.length; i += 5) {
       const batch = dates.slice(i, i + 5);
-      const fetches = batch.map(date =>
-        fetch(`${this.BASE}?groups=100&dates=${date}&limit=100`)
-          .then(r => r.ok ? r.json() : null)
-          .catch(e => { errors.push(`${date}: ${e.message}`); return null; })
-      );
+      const fetches = batch.map(date => {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000); // 4s timeout
+        return fetch(`${this.BASE}?groups=100&dates=${date}&limit=100`, { signal: controller.signal })
+          .then(r => { clearTimeout(timeout); return r.ok ? r.json() : null; })
+          .catch(e => { clearTimeout(timeout); errors.push(`${date}: ${e.message}`); return null; });
+      });
       const results = await Promise.all(fetches);
       for (const data of results) {
         if (data?.events) allEvents.push(...data.events);
