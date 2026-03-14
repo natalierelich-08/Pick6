@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pick 6 Pool – 2026 March Madness</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🏀</span>
+        <div>
+          <h1 id="pool-name" class="font-bold text-lg leading-tight">Pick 6 Pool</h1>
+          <p class="text-xs text-slate-400">2026 March Madness</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="submit.html" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-semibold transition-colors">
+          Submit Picks
+        </a>
+        <a href="admin.html" class="text-slate-400 hover:text-slate-200 px-3 py-2 text-sm transition-colors rounded-lg hover:bg-slate-700">
+          ⚙️ Admin
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Status bar -->
+  <div class="bg-slate-800/60 border-b border-slate-700/50 px-4 py-1.5">
+    <div class="max-w-7xl mx-auto flex items-center justify-between text-xs">
+      <div class="flex items-center gap-4 text-slate-400">
+        <span class="flex items-center gap-1.5">
+          <span id="status-dot" class="inline-block w-2 h-2 rounded-full bg-slate-500"></span>
+          <span id="status-text">Loading…</span>
+        </span>
+        <span id="entry-count" class="hidden"></span>
+        <span id="games-count" class="hidden"></span>
+      </div>
+      <button id="refresh-btn" onclick="refreshData(true)"
+        class="text-slate-400 hover:text-white transition-colors flex items-center gap-1 py-1">
+        <span id="refresh-icon">↻</span>
+        <span id="refresh-text">Refresh</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-4 py-5">
+
+    <!-- Config warning -->
+    <div id="config-warning" class="hidden mb-5 card border-yellow-700 bg-yellow-900/20">
+      <p class="font-semibold text-yellow-400 mb-1">Setup required</p>
+      <p class="text-sm text-yellow-300/80">
+        The Google Sheets CSV URL isn't configured yet.
+        <a href="admin.html" class="underline font-medium">Go to Admin</a> to finish setup.
+      </p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-0 mb-5 border-b border-slate-700">
+      <button class="tab-btn active-tab px-4 py-2.5 text-sm" data-tab="leaderboard">
+        🏆 Leaderboard
+      </button>
+      <button class="tab-btn px-4 py-2.5 text-sm" data-tab="teams">
+        📊 Team Analysis
+      </button>
+      <button class="tab-btn px-4 py-2.5 text-sm" data-tab="lookup">
+        🔍 Find My Entry
+      </button>
+    </div>
+
+    <!-- ===== LEADERBOARD TAB ===== -->
+    <div id="tab-leaderboard" class="tab-content">
+      <div id="leaderboard-loading" class="flex flex-col items-center justify-center py-16 gap-3">
+        <div class="spinner"></div>
+        <p class="text-slate-400 text-sm">Fetching entries and scores…</p>
+      </div>
+      <div id="leaderboard-empty" class="hidden text-center py-16">
+        <p class="text-4xl mb-3">🏀</p>
+        <p class="text-slate-300 font-medium">No entries yet</p>
+        <p class="text-slate-500 text-sm mt-1">Be the first to <a href="submit.html" class="text-blue-400 hover:underline">submit your picks</a>.</p>
+      </div>
+      <div id="leaderboard-container" class="hidden">
+        <!-- Stats bar -->
+        <div id="stats-bar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5"></div>
+        <!-- Table -->
+        <div class="lb-scroll">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th class="w-10">#</th>
+                <th>Name</th>
+                <th class="text-right">Pts</th>
+                <th class="hide-mobile">Team 1</th>
+                <th class="hide-mobile">Team 2</th>
+                <th class="hide-mobile">Team 3</th>
+                <th class="hide-mobile">Team 4</th>
+                <th class="hide-mobile">Team 5</th>
+                <th class="hide-mobile">Team 6</th>
+                <th class="text-center">Alive</th>
+                <th class="hide-mobile">TOD</th>
+                <th class="text-right hide-mobile">TOD Pts</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body"></tbody>
+          </table>
+        </div>
+        <!-- Mobile: full teams view on row expand -->
+        <p class="text-xs text-slate-500 mt-2 text-right">
+          Tap any row to see all 6 teams on mobile.
+        </p>
+      </div>
+    </div>
+
+    <!-- ===== TEAM ANALYSIS TAB ===== -->
+    <div id="tab-teams" class="tab-content hidden">
+      <div id="teams-loading" class="flex flex-col items-center justify-center py-16 gap-3">
+        <div class="spinner"></div>
+        <p class="text-slate-400 text-sm">Loading…</p>
+      </div>
+      <div id="teams-container" class="hidden">
+        <p class="text-sm text-slate-400 mb-4">
+          How many entries picked each team, and how are they performing.
+        </p>
+        <div class="lb-scroll">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center">Seed</th>
+                <th class="text-right"># Picked</th>
+                <th class="text-right">% Picked</th>
+                <th>Pick Share</th>
+                <th class="text-center">Status</th>
+                <th class="text-right">Wins</th>
+                <th class="text-right">Pts/Entry</th>
+              </tr>
+            </thead>
+            <tbody id="teams-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LOOKUP TAB ===== -->
+    <div id="tab-lookup" class="tab-content hidden">
+      <div class="max-w-lg">
+        <p class="text-sm text-slate-400 mb-4">Search by the name you used when submitting picks.</p>
+        <div class="flex gap-2 mb-4">
+          <input type="text" id="lookup-input" placeholder="Your entry name…"
+            class="form-input flex-1" onkeydown="if(event.key==='Enter') lookupEntry()">
+          <button onclick="lookupEntry()"
+            class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap">
+            Search
+          </button>
+        </div>
+        <div id="lookup-results"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Mobile team expand modal -->
+  <div id="expand-modal" class="hidden fixed inset-0 bg-black/70 flex items-end sm:items-center justify-center z-50 p-4">
+    <div class="card w-full max-w-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div id="modal-rank" class="text-xs text-slate-400"></div>
+          <div id="modal-name" class="font-bold text-lg"></div>
+          <div id="modal-pts" class="text-blue-400 font-semibold"></div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl">✕</button>
+      </div>
+      <div id="modal-teams" class="space-y-2"></div>
+      <div id="modal-tod" class="mt-3 pt-3 border-t border-slate-700 text-sm text-slate-400"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/espn.js"></script>
+  <script src="js/scoring.js"></script>
+  <script>
+
+    // ---- State ----
+    let allEntries = [];
+    let teamResults = {};
+    let scoredEntries = [];
+    let pick6Teams = [];
+    let refreshTimer = null;
+    let refreshCountdown = 60;
+    const REFRESH_INTERVAL = 60;
+
+    // ---- Init ----
+    window.addEventListener('DOMContentLoaded', async () => {
+      const cfg = AppConfig.get();
+      document.getElementById('pool-name').textContent = cfg.poolName || 'Pick 6 Pool';
+      pick6Teams = AppConfig.getTeams();
+
+      // Tab switching
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+      });
+
+      if (!cfg.sheetsCsvUrl) {
+        document.getElementById('config-warning').classList.remove('hidden');
+        setStatus('Not configured', 'yellow');
+        hideLoading();
+        return;
+      }
+
+      await refreshData(false);
+      startAutoRefresh();
+    });
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active-tab', b.dataset.tab === name);
+        b.classList.toggle('text-slate-400', b.dataset.tab !== name);
+      });
+      document.querySelectorAll('.tab-content').forEach(el => {
+        el.classList.toggle('hidden', el.id !== `tab-${name}`);
+      });
+    }
+
+    // ---- Data Loading ----
+    async function refreshData(force = false) {
+      const cfg = AppConfig.get();
+      if (!cfg.sheetsCsvUrl) return;
+
+      setStatus('Updating…', 'yellow', true);
+      document.getElementById('refresh-icon').textContent = '⟳';
+
+      try {
+        // Fetch entries and scores in parallel
+        const [entriesResult, espnResult] = await Promise.allSettled([
+          fetchEntries(cfg.sheetsCsvUrl),
+          cfg.useManualOverrides
+            ? Promise.resolve({ teamResults: AppConfig.getOverrides(), completedGames: 0 })
+            : ESPNAPI.fetchResults(cfg.tournamentYear, force, pick6Teams),
+        ]);
+
+        if (entriesResult.status === 'fulfilled') {
+          allEntries = entriesResult.value;
+        } else {
+          throw new Error('Could not load entries: ' + entriesResult.reason?.message);
+        }
+
+        if (espnResult.status === 'fulfilled') {
+          teamResults = espnResult.value.teamResults || {};
+          const gameCount = espnResult.value.completedGames || 0;
+          document.getElementById('games-count').textContent = `${gameCount} games tracked`;
+          document.getElementById('games-count').classList.remove('hidden');
+        } else {
+          console.warn('ESPN fetch failed, scoring with 0 wins:', espnResult.reason?.message);
+          teamResults = {};
+        }
+
+        scoredEntries = scoreAllEntries(allEntries, teamResults);
+        renderLeaderboard();
+        renderTeamAnalysis();
+
+        const ts = new Date().toLocaleTimeString();
+        setStatus(`Updated ${ts}`, 'green');
+        document.getElementById('entry-count').textContent = `${allEntries.length} entries`;
+        document.getElementById('entry-count').classList.remove('hidden');
+
+      } catch (err) {
+        console.error(err);
+        setStatus('Error loading data', 'red');
+        showToast('Failed to load data: ' + err.message, 'error');
+      } finally {
+        document.getElementById('refresh-icon').textContent = '↻';
+        resetCountdown();
+      }
+    }
+
+    // ---- Render Leaderboard ----
+    function renderLeaderboard() {
+      document.getElementById('leaderboard-loading').classList.add('hidden');
+
+      if (scoredEntries.length === 0) {
+        document.getElementById('leaderboard-empty').classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('leaderboard-container').classList.remove('hidden');
+      document.getElementById('leaderboard-empty').classList.add('hidden');
+
+      // Stats bar
+      const teamsAliveList = pick6Teams.filter(t => (teamResults[t.displayName] || {}).alive !== false);
+      const avgPts = scoredEntries.length
+        ? Math.round(scoredEntries.reduce((s, e) => s + e.totalPoints, 0) / scoredEntries.length)
+        : 0;
+      const leader = scoredEntries[0];
+
+      renderStatsBar([
+        { label: 'Entries', value: scoredEntries.length, icon: '👥' },
+        { label: 'Teams Still Alive', value: `${teamsAliveList.length} / ${pick6Teams.length}`, icon: '🟢' },
+        { label: 'Leader', value: leader?.name || '–', icon: '🥇' },
+        { label: 'Avg Score', value: avgPts + ' pts', icon: '📈' },
+      ]);
+
+      // Table rows
+      const tbody = document.getElementById('leaderboard-body');
+      tbody.innerHTML = '';
+
+      for (const entry of scoredEntries) {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.addEventListener('click', () => openModal(entry));
+
+        const rankCls = entry.rank <= 3 ? `rank-${entry.rank}` : '';
+        const rankDisplay = entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : entry.rank;
+
+        tr.innerHTML = `
+          <td class="font-mono ${rankCls} text-center">${rankDisplay}</td>
+          <td class="font-medium">${escHtml(entry.name)}</td>
+          <td class="text-right font-bold text-blue-300">${entry.totalPoints}</td>
+          ${entry.teamDetails.map(t => `
+            <td class="hide-mobile">
+              <span class="team-badge ${t.alive ? 'alive' : 'eliminated'}">
+                <span class="seed-pill">${t.seed}</span>${escHtml(t.name || t.displayName.replace(/\s*\(\d+\)$/, ''))}
+              </span>
+            </td>
+          `).join('')}
+          <td class="text-center font-medium ${entry.teamsAlive === 0 ? 'text-red-400' : entry.teamsAlive >= 4 ? 'text-green-400' : 'text-yellow-400'}">
+            ${entry.teamsAlive}/6
+          </td>
+          <td class="hide-mobile text-sm text-slate-400">${entry.tod ? escHtml(entry.tod) : '–'}</td>
+          <td class="text-right hide-mobile text-sm ${entry.todPoints > 0 ? 'text-blue-300' : 'text-slate-500'}">${entry.todPoints || '–'}</td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function renderStatsBar(stats) {
+      document.getElementById('stats-bar').innerHTML = stats.map(s => `
+        <div class="card flex items-center gap-3 py-3 px-4">
+          <span class="text-2xl">${s.icon}</span>
+          <div>
+            <div class="text-xs text-slate-400">${s.label}</div>
+            <div class="font-bold text-sm">${s.value}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ---- Render Team Analysis ----
+    function renderTeamAnalysis() {
+      document.getElementById('teams-loading').classList.add('hidden');
+      const analysis = getTeamAnalysis(allEntries, teamResults, pick6Teams);
+      const picked = analysis.filter(t => t.pickCount > 0);
+
+      if (picked.length === 0) {
+        document.getElementById('teams-container').innerHTML =
+          '<p class="text-slate-400 text-center py-12">No team data yet.</p>';
+        document.getElementById('teams-container').classList.remove('hidden');
+        return;
+      }
+
+      document.getElementById('teams-container').classList.remove('hidden');
+      const maxPicks = picked[0]?.pickCount || 1;
+
+      document.getElementById('teams-body').innerHTML = picked.map(t => `
+        <tr>
+          <td class="font-medium">
+            <span class="seed-pill">${t.seed}</span>${escHtml(t.name || t.displayName.replace(/\s*\(\d+\)$/, ''))}
+          </td>
+          <td class="text-center text-slate-400">${t.seed}</td>
+          <td class="text-right font-semibold">${t.pickCount}</td>
+          <td class="text-right text-slate-400">${t.pickPercentage}%</td>
+          <td class="hide-mobile" style="min-width:100px">
+            <div class="pick-bar-bg">
+              <div class="pick-bar-fill" style="width:${Math.round((t.pickCount/maxPicks)*100)}%"></div>
+            </div>
+          </td>
+          <td class="text-center">
+            ${t.result.alive
+              ? '<span class="team-badge alive">Alive</span>'
+              : '<span class="team-badge eliminated">Out</span>'}
+          </td>
+          <td class="text-right text-slate-300">${t.result.wins || 0}</td>
+          <td class="text-right text-blue-300 font-medium">${t.pointsScored || 0}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ---- Lookup ----
+    function lookupEntry() {
+      const query = document.getElementById('lookup-input').value.trim().toLowerCase();
+      const container = document.getElementById('lookup-results');
+      if (!query) return;
+
+      const matches = scoredEntries.filter(e =>
+        e.name.toLowerCase().includes(query) ||
+        e.email.toLowerCase().includes(query)
+      );
+
+      if (matches.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-sm mt-2">No entries found for that name.</p>';
+        return;
+      }
+
+      container.innerHTML = matches.map(entry => `
+        <div class="entry-card">
+          <div class="flex items-start justify-between mb-3">
+            <div>
+              <div class="rank-display rank-${entry.rank <= 3 ? entry.rank : 'other'}">
+                Rank #${entry.rank}
+              </div>
+              <div class="font-bold text-lg mt-1">${escHtml(entry.name)}</div>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-bold text-blue-300">${entry.totalPoints} pts</div>
+              <div class="text-xs text-slate-400">${entry.teamsAlive}/6 teams alive</div>
+            </div>
+          </div>
+          <div class="space-y-1.5">
+            ${entry.teamDetails.map((t, i) => `
+              <div class="flex items-center justify-between text-sm">
+                <span class="team-badge ${t.alive ? 'alive' : 'eliminated'}">
+                  <span class="seed-pill">${t.seed}</span>
+                  ${escHtml(t.name || t.displayName.replace(/\s*\(\d+\)$/, ''))}
+                </span>
+                <span class="text-slate-400">${t.wins} win${t.wins !== 1 ? 's' : ''} &bull; ${t.points} pts</span>
+              </div>
+            `).join('')}
+          </div>
+          ${entry.tod ? `
+            <div class="mt-3 pt-3 border-t border-slate-700 text-sm">
+              <span class="text-slate-400">Team of Destiny:</span>
+              <span class="font-medium ml-1">${escHtml(entry.tod)}</span>
+              <span class="text-blue-300 ml-2">(${entry.todPoints} pts)</span>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+    }
+
+    // ---- Mobile Modal ----
+    function openModal(entry) {
+      document.getElementById('modal-rank').textContent = `Rank #${entry.rank}`;
+      document.getElementById('modal-name').textContent = entry.name;
+      document.getElementById('modal-pts').textContent = `${entry.totalPoints} pts · ${entry.teamsAlive}/6 alive`;
+      document.getElementById('modal-teams').innerHTML = entry.teamDetails.map(t => `
+        <div class="flex items-center justify-between text-sm">
+          <span class="team-badge ${t.alive ? 'alive' : 'eliminated'}">
+            <span class="seed-pill">${t.seed}</span>
+            ${escHtml(t.name || t.displayName.replace(/\s*\(\d+\)$/, ''))}
+          </span>
+          <span class="text-slate-400">${t.wins}W · ${t.points}pts</span>
+        </div>
+      `).join('');
+      document.getElementById('modal-tod').innerHTML = entry.tod
+        ? `Team of Destiny: <strong class="text-white">${escHtml(entry.tod)}</strong> (${entry.todPoints} pts)`
+        : '';
+      document.getElementById('expand-modal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('expand-modal').classList.add('hidden');
+    }
+
+    // ---- Helpers ----
+    function setStatus(text, color, live = false) {
+      const dot = document.getElementById('status-dot');
+      const txt = document.getElementById('status-text');
+      txt.textContent = text;
+      dot.className = `inline-block w-2 h-2 rounded-full ${
+        color === 'green' ? 'bg-green-400' :
+        color === 'yellow' ? 'bg-yellow-400' :
+        color === 'red' ? 'bg-red-400' : 'bg-slate-400'
+      } ${live ? 'status-live' : ''}`;
+    }
+
+    function hideLoading() {
+      document.getElementById('leaderboard-loading').classList.add('hidden');
+      document.getElementById('leaderboard-empty').classList.remove('hidden');
+    }
+
+    function startAutoRefresh() {
+      refreshCountdown = REFRESH_INTERVAL;
+      refreshTimer = setInterval(() => {
+        refreshCountdown--;
+        document.getElementById('refresh-text').textContent = `${refreshCountdown}s`;
+        if (refreshCountdown <= 0) {
+          refreshCountdown = REFRESH_INTERVAL;
+          refreshData(true);
+        }
+      }, 1000);
+    }
+
+    function resetCountdown() {
+      refreshCountdown = REFRESH_INTERVAL;
+      document.getElementById('refresh-text').textContent = `${refreshCountdown}s`;
+    }
+
+    function escHtml(str) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(str || ''));
+      return d.innerHTML;
+    }
+
+    function showToast(msg, type = 'info') {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 4000);
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('expand-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+
+  </script>
+</body>
+</html>

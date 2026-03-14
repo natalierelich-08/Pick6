@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Pick 6 Pool 2026</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+
+  <!-- Navbar -->
+  <nav class="bg-slate-800 border-b border-slate-700 px-4 py-3">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-2 text-slate-300 hover:text-white transition-colors">
+        <span>←</span><span class="font-semibold">Back to Pool</span>
+      </a>
+      <span class="text-sm font-semibold text-slate-300">⚙️ Admin Panel</span>
+    </div>
+  </nav>
+
+  <main class="max-w-3xl mx-auto px-4 py-8 space-y-8">
+
+    <div>
+      <h1 class="text-2xl font-bold">Admin Panel</h1>
+      <p class="text-slate-400 text-sm mt-1">All settings are stored in your browser. Do this setup on the machine you'll use to manage the pool (or share the browser storage).</p>
+    </div>
+
+    <!-- Setup Checklist -->
+    <div class="card border-blue-700/40 bg-blue-900/10">
+      <p class="font-semibold text-blue-300 mb-3">Setup Checklist</p>
+      <div class="space-y-2 text-sm" id="checklist">
+        <div id="check-gas" class="flex items-center gap-2 text-slate-400">
+          <span id="check-gas-icon">⬜</span> Step 1: Deploy Google Apps Script and enter the URL
+        </div>
+        <div id="check-sheets" class="flex items-center gap-2 text-slate-400">
+          <span id="check-sheets-icon">⬜</span> Step 2: Publish Google Sheets as CSV and enter the URL
+        </div>
+        <div id="check-teams" class="flex items-center gap-2 text-slate-400">
+          <span id="check-teams-icon">⬜</span> Step 3: Add tournament teams (all 68)
+        </div>
+        <div id="check-github" class="flex items-center gap-2 text-slate-400">
+          <span>⬜</span> Step 4: Push this folder to GitHub and enable GitHub Pages
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 1: Pool Config -->
+    <section class="card space-y-4">
+      <h2 class="font-bold text-lg">1. Pool Configuration</h2>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">Pool Name</label>
+        <input type="text" id="cfg-pool-name" placeholder="Pick 6 Pool" class="form-input">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">
+          Google Apps Script URL
+          <span class="text-slate-500 font-normal text-xs ml-1">(receives form submissions)</span>
+        </label>
+        <input type="url" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec"
+          class="form-input">
+        <p class="text-xs text-slate-500 mt-1">
+          See the README for how to deploy <code class="bg-slate-800 px-1 rounded">google-apps-script.gs</code>.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">
+          Google Sheets CSV URL
+          <span class="text-slate-500 font-normal text-xs ml-1">(published form responses)</span>
+        </label>
+        <input type="url" id="cfg-sheets-url" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv"
+          class="form-input">
+        <p class="text-xs text-slate-500 mt-1">
+          In your Google Sheet: File → Share → Publish to web → Select the Entries sheet → CSV → Publish. Paste that URL here.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1.5">Tournament Year</label>
+        <input type="number" id="cfg-year" value="2026" min="2024" max="2030" class="form-input" style="max-width:120px">
+      </div>
+
+      <div class="flex items-center gap-3">
+        <input type="checkbox" id="cfg-overrides" class="w-4 h-4 rounded">
+        <label for="cfg-overrides" class="text-sm text-slate-300">
+          Use manual win overrides instead of ESPN API
+          <span class="text-slate-500 text-xs">(use if ESPN data is stale or wrong)</span>
+        </label>
+      </div>
+
+      <button onclick="saveConfig()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+        Save Configuration
+      </button>
+    </section>
+
+    <!-- Section 2: Teams -->
+    <section class="card space-y-4">
+      <div class="flex items-start justify-between">
+        <div>
+          <h2 class="font-bold text-lg">2. Tournament Teams</h2>
+          <p class="text-sm text-slate-400 mt-0.5">
+            Add all 68 teams from the bracket. This unlocks the submission form.
+          </p>
+        </div>
+        <span id="teams-count-badge" class="bg-slate-700 text-slate-300 text-xs px-2 py-1 rounded-full">0 teams</span>
+      </div>
+
+      <!-- Import/Export -->
+      <div class="flex flex-wrap gap-2">
+        <button onclick="importTeamsDialog()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm transition-colors">
+          📥 Import JSON
+        </button>
+        <button onclick="exportTeams()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm transition-colors">
+          📤 Export JSON
+        </button>
+        <button onclick="loadSampleTeams()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-lg text-sm transition-colors">
+          🔄 Load 2025 teams (as template)
+        </button>
+        <button onclick="clearTeams()" class="text-red-400 hover:text-red-300 px-4 py-2 rounded-lg text-sm transition-colors">
+          🗑 Clear all
+        </button>
+      </div>
+
+      <!-- Add team form -->
+      <div class="bg-slate-800/60 rounded-lg p-4 space-y-3">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Add a team</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Team name</label>
+            <input type="text" id="add-name" placeholder="Duke" class="form-input text-sm" style="padding:8px 10px">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Seed (1–16)</label>
+            <input type="number" id="add-seed" placeholder="1" min="1" max="16" class="form-input text-sm" style="padding:8px 10px">
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">Region</label>
+            <select id="add-region" class="form-input text-sm" style="padding:8px 10px">
+              <option value="East">East</option>
+              <option value="West">West</option>
+              <option value="South">South</option>
+              <option value="Midwest">Midwest</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-400 mb-1">ESPN name (optional)</label>
+            <input type="text" id="add-espn" placeholder="Duke Blue Devils" class="form-input text-sm" style="padding:8px 10px">
+            <p class="text-xs text-slate-600 mt-1">Only if name matching fails</p>
+          </div>
+        </div>
+        <button onclick="addTeam()" class="bg-green-700 hover:bg-green-600 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+          + Add Team
+        </button>
+      </div>
+
+      <!-- Teams table -->
+      <div class="lb-scroll" id="teams-table-wrapper">
+        <table class="lb-table" id="teams-table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th class="text-center">Seed</th>
+              <th>Region</th>
+              <th class="hide-mobile">ESPN Name</th>
+              <th class="text-center">Wins</th>
+              <th class="text-center">Alive</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="teams-tbody"></tbody>
+        </table>
+        <p id="no-teams-placeholder" class="text-center text-slate-500 text-sm py-8">No teams added yet.</p>
+      </div>
+    </section>
+
+    <!-- Section 3: Manual Overrides -->
+    <section class="card space-y-4">
+      <h2 class="font-bold text-lg">3. Manual Score Overrides</h2>
+      <p class="text-sm text-slate-400">
+        If ESPN auto-scoring is wrong, enter win counts manually here. Enable "Use manual overrides" in Section 1 to activate.
+      </p>
+      <div id="overrides-container" class="space-y-2">
+        <p class="text-slate-500 text-sm">Add teams in Section 2 first.</p>
+      </div>
+      <button onclick="saveOverrides()" class="bg-blue-600 hover:bg-blue-700 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+        Save Overrides
+      </button>
+    </section>
+
+    <!-- Section 4: ESPN Cache -->
+    <section class="card space-y-3">
+      <h2 class="font-bold text-lg">4. ESPN Data</h2>
+      <p class="text-sm text-slate-400">
+        The leaderboard caches ESPN scores for 2 minutes. If results look stale, force a refresh.
+      </p>
+      <div class="flex gap-3">
+        <button onclick="clearESPNCache()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-lg text-sm transition-colors">
+          Clear ESPN Cache
+        </button>
+        <a href="index.html" class="bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors">
+          Back to Leaderboard
+        </a>
+      </div>
+    </section>
+
+    <!-- Import JSON dialog -->
+    <div id="import-dialog" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div class="card w-full max-w-lg space-y-4">
+        <div class="flex items-center justify-between">
+          <p class="font-bold">Import Teams JSON</p>
+          <button onclick="closeImport()" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <p class="text-sm text-slate-400">Paste a JSON array of team objects.</p>
+        <textarea id="import-json" class="form-input" rows="8"
+          placeholder='[{"name":"Duke","seed":1,"region":"East"},{"name":"Houston","seed":1,"region":"Midwest"},...]'></textarea>
+        <div class="flex gap-3">
+          <button onclick="confirmImport()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors">
+            Import
+          </button>
+          <button onclick="closeImport()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2.5 rounded-lg text-sm transition-colors">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <div id="toast-container"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/espn.js"></script>
+  <script>
+
+    let adminTeams = [];
+    let adminOverrides = {};
+
+    // ---- Init ----
+    window.addEventListener('DOMContentLoaded', () => {
+      const cfg = AppConfig.get();
+      document.getElementById('cfg-pool-name').value = cfg.poolName || '';
+      document.getElementById('cfg-gas-url').value = cfg.gasEndpoint || '';
+      document.getElementById('cfg-sheets-url').value = cfg.sheetsCsvUrl || '';
+      document.getElementById('cfg-year').value = cfg.tournamentYear || 2026;
+      document.getElementById('cfg-overrides').checked = cfg.useManualOverrides || false;
+
+      adminTeams = AppConfig.getTeams();
+      adminOverrides = AppConfig.getOverrides();
+
+      renderTeamsTable();
+      renderOverrides();
+      updateChecklist();
+    });
+
+    // ---- Config ----
+    function saveConfig() {
+      AppConfig.set({
+        poolName: document.getElementById('cfg-pool-name').value.trim() || 'Pick 6 Pool',
+        gasEndpoint: document.getElementById('cfg-gas-url').value.trim(),
+        sheetsCsvUrl: document.getElementById('cfg-sheets-url').value.trim(),
+        tournamentYear: parseInt(document.getElementById('cfg-year').value) || 2026,
+        useManualOverrides: document.getElementById('cfg-overrides').checked,
+      });
+      updateChecklist();
+      showToast('Configuration saved!', 'success');
+    }
+
+    // ---- Teams ----
+    function addTeam() {
+      const name = document.getElementById('add-name').value.trim();
+      const seed = parseInt(document.getElementById('add-seed').value);
+      const region = document.getElementById('add-region').value;
+      const espnName = document.getElementById('add-espn').value.trim();
+
+      if (!name) { showToast('Team name is required', 'error'); return; }
+      if (!seed || seed < 1 || seed > 16) { showToast('Seed must be 1–16', 'error'); return; }
+
+      const displayName = `${name} (${seed})`;
+
+      if (adminTeams.find(t => t.displayName === displayName)) {
+        showToast(`${displayName} already exists`, 'error');
+        return;
+      }
+
+      adminTeams.push({ name, seed, region, displayName, espnName: espnName || null });
+      adminTeams.sort((a, b) => a.seed - b.seed || a.name.localeCompare(b.name));
+      AppConfig.setTeams(adminTeams);
+
+      // Clear add form
+      document.getElementById('add-name').value = '';
+      document.getElementById('add-seed').value = '';
+      document.getElementById('add-espn').value = '';
+
+      renderTeamsTable();
+      renderOverrides();
+      updateChecklist();
+      showToast(`${displayName} added!`, 'success');
+    }
+
+    function removeTeam(displayName) {
+      adminTeams = adminTeams.filter(t => t.displayName !== displayName);
+      AppConfig.setTeams(adminTeams);
+      renderTeamsTable();
+      renderOverrides();
+      updateChecklist();
+    }
+
+    function renderTeamsTable() {
+      const tbody = document.getElementById('teams-tbody');
+      const placeholder = document.getElementById('no-teams-placeholder');
+      document.getElementById('teams-count-badge').textContent = `${adminTeams.length} teams`;
+
+      if (adminTeams.length === 0) {
+        tbody.innerHTML = '';
+        placeholder.classList.remove('hidden');
+        return;
+      }
+      placeholder.classList.add('hidden');
+
+      const overrides = AppConfig.getOverrides();
+      tbody.innerHTML = adminTeams.map(team => {
+        const ov = overrides[team.displayName] || {};
+        return `<tr>
+          <td class="font-medium">${escHtml(team.displayName)}</td>
+          <td class="text-center">
+            <span class="seed-pill">${team.seed}</span>
+          </td>
+          <td class="text-slate-400">${escHtml(team.region || '–')}</td>
+          <td class="text-slate-400 hide-mobile text-xs">${escHtml(team.espnName || team.name)}</td>
+          <td class="text-center text-sm">${ov.wins ?? '–'}</td>
+          <td class="text-center">
+            ${ov.alive === false
+              ? '<span class="team-badge eliminated">Out</span>'
+              : '<span class="team-badge alive">In</span>'}
+          </td>
+          <td>
+            <button onclick="removeTeam('${escHtml(team.displayName).replace(/'/g,'\\\'')}')"
+              class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded hover:bg-red-900/20 transition-colors">
+              Remove
+            </button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderOverrides() {
+      const container = document.getElementById('overrides-container');
+      if (adminTeams.length === 0) {
+        container.innerHTML = '<p class="text-slate-500 text-sm">Add teams in Section 2 first.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="lb-scroll">
+          <table class="lb-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th class="text-center">Seed</th>
+                <th class="text-center">Wins</th>
+                <th class="text-center">Still Alive?</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${adminTeams.map(team => {
+                const ov = adminOverrides[team.displayName] || { wins: 0, alive: true };
+                return `<tr>
+                  <td>${escHtml(team.displayName)}</td>
+                  <td class="text-center"><span class="seed-pill">${team.seed}</span></td>
+                  <td class="text-center">
+                    <input type="number" min="0" max="6" value="${ov.wins ?? 0}"
+                      data-team="${escHtml(team.displayName)}" data-field="wins"
+                      class="override-input bg-slate-800 border border-slate-600 rounded px-2 py-1 w-16 text-center text-sm focus:outline-none focus:border-blue-500"
+                      onchange="updateOverride('${escHtml(team.displayName).replace(/'/g,'\\\'')}')" >
+                  </td>
+                  <td class="text-center">
+                    <select data-team="${escHtml(team.displayName)}" data-field="alive"
+                      class="override-select bg-slate-800 border border-slate-600 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+                      onchange="updateOverride('${escHtml(team.displayName).replace(/'/g,'\\\'')}')" >
+                      <option value="true" ${ov.alive !== false ? 'selected' : ''}>✅ Alive</option>
+                      <option value="false" ${ov.alive === false ? 'selected' : ''}>❌ Eliminated</option>
+                    </select>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function updateOverride(teamName) {
+      const wins = parseInt(
+        document.querySelector(`.override-input[data-team="${teamName}"]`)?.value || 0
+      );
+      const alive = document.querySelector(`.override-select[data-team="${teamName}"]`)?.value !== 'false';
+      adminOverrides[teamName] = { wins, alive };
+    }
+
+    function saveOverrides() {
+      // Sync all inputs first
+      for (const team of adminTeams) {
+        const wins = parseInt(
+          document.querySelector(`.override-input[data-team="${team.displayName}"]`)?.value || 0
+        );
+        const alive = document.querySelector(`.override-select[data-team="${team.displayName}"]`)?.value !== 'false';
+        adminOverrides[team.displayName] = { wins, alive };
+      }
+      AppConfig.setOverrides(adminOverrides);
+      renderTeamsTable();
+      showToast('Overrides saved!', 'success');
+    }
+
+    // ---- Import/Export ----
+    function importTeamsDialog() {
+      document.getElementById('import-dialog').classList.remove('hidden');
+    }
+
+    function closeImport() {
+      document.getElementById('import-dialog').classList.add('hidden');
+      document.getElementById('import-json').value = '';
+    }
+
+    function confirmImport() {
+      try {
+        const raw = document.getElementById('import-json').value.trim();
+        const imported = JSON.parse(raw);
+
+        if (!Array.isArray(imported)) throw new Error('Must be a JSON array');
+
+        const newTeams = imported.map(t => {
+          if (!t.name || !t.seed) throw new Error('Each team needs "name" and "seed"');
+          return {
+            name: String(t.name),
+            seed: parseInt(t.seed),
+            region: t.region || '',
+            displayName: `${t.name} (${t.seed})`,
+            espnName: t.espnName || null,
+          };
+        });
+
+        adminTeams = newTeams.sort((a, b) => a.seed - b.seed || a.name.localeCompare(b.name));
+        AppConfig.setTeams(adminTeams);
+        renderTeamsTable();
+        renderOverrides();
+        updateChecklist();
+        closeImport();
+        showToast(`Imported ${adminTeams.length} teams!`, 'success');
+      } catch (e) {
+        showToast('Import failed: ' + e.message, 'error');
+      }
+    }
+
+    function exportTeams() {
+      const json = JSON.stringify(adminTeams, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pick6-teams-2026.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearTeams() {
+      if (!confirm('Remove all teams? This cannot be undone.')) return;
+      adminTeams = [];
+      AppConfig.setTeams([]);
+      renderTeamsTable();
+      renderOverrides();
+      updateChecklist();
+      showToast('All teams cleared.', 'success');
+    }
+
+    function loadSampleTeams() {
+      if (adminTeams.length > 0 && !confirm('This will replace your current teams. Continue?')) return;
+
+      // 2025 teams as a template (update seeds/names for 2026 bracket)
+      adminTeams = [
+        {name:'Auburn',seed:1,region:'South'},{name:'Duke',seed:1,region:'East'},
+        {name:'Houston',seed:1,region:'Midwest'},{name:'Florida',seed:1,region:'West'},
+        {name:'Tennessee',seed:2,region:'Midwest'},{name:'Alabama',seed:2,region:'East'},
+        {name:'Michigan State',seed:2,region:'South'},{name:"St. John's",seed:2,region:'West'},
+        {name:'Texas Tech',seed:3,region:'West'},{name:'Wisconsin',seed:3,region:'West'},
+        {name:'Kentucky',seed:3,region:'East'},{name:'Illinois',seed:3,region:'Midwest'},
+        {name:'Maryland',seed:4,region:'East'},{name:'Arizona',seed:4,region:'South'},
+        {name:'Purdue',seed:4,region:'Midwest'},{name:'Baylor',seed:4,region:'West'},
+        {name:'Clemson',seed:5,region:'South'},{name:'Memphis',seed:5,region:'Midwest'},
+        {name:'Michigan',seed:5,region:'West'},{name:'Oregon',seed:5,region:'East'},
+        {name:'Ole Miss',seed:6,region:'West'},{name:'BYU',seed:6,region:'East'},
+        {name:'Missouri',seed:6,region:'South'},{name:'Illinois',seed:6,region:'Midwest'},
+        {name:'Saint Mary\'s',seed:7,region:'West'},{name:'Gonzaga',seed:7,region:'South'},
+        {name:'Kansas',seed:7,region:'Midwest'},{name:'Marquette',seed:7,region:'East'},
+        {name:'Gonzaga',seed:8,region:'East'},{name:'Louisville',seed:8,region:'Midwest'},
+        {name:'UConn',seed:8,region:'South'},{name:'Creighton',seed:8,region:'West'},
+        {name:'Creighton',seed:9,region:'East'},{name:'Iowa',seed:9,region:'Midwest'},
+        {name:'Colorado State',seed:12,region:'West'},{name:'UC San Diego',seed:12,region:'South'},
+        {name:'Yale',seed:13,region:'East'},{name:'Akron',seed:13,region:'South'},
+        {name:'McNeese',seed:12,region:'Midwest'},{name:'Drake',seed:11,region:'West'},
+        {name:'North Carolina',seed:11,region:'East'},{name:'New Mexico',seed:10,region:'Midwest'},
+        {name:'VCU',seed:11,region:'South'},{name:'Arkansas',seed:10,region:'West'},
+      ].map(t => ({
+        ...t,
+        displayName: `${t.name} (${t.seed})`,
+        espnName: null,
+      })).sort((a, b) => a.seed - b.seed || a.name.localeCompare(b.name));
+
+      // Deduplicate
+      const seen = new Set();
+      adminTeams = adminTeams.filter(t => {
+        if (seen.has(t.displayName)) return false;
+        seen.add(t.displayName);
+        return true;
+      });
+
+      AppConfig.setTeams(adminTeams);
+      renderTeamsTable();
+      renderOverrides();
+      updateChecklist();
+      showToast('Sample teams loaded. Update with the 2026 bracket!', 'success');
+    }
+
+    // ---- ESPN Cache ----
+    function clearESPNCache() {
+      ESPNAPI.clearCache();
+      showToast('ESPN cache cleared. Next leaderboard load will re-fetch.', 'success');
+    }
+
+    // ---- Checklist ----
+    function updateChecklist() {
+      const cfg = AppConfig.get();
+      const gasOk = !!cfg.gasEndpoint;
+      const sheetsOk = !!cfg.sheetsCsvUrl;
+      const teamsOk = adminTeams.length >= 10;
+
+      setCheck('check-gas', gasOk);
+      setCheck('check-sheets', sheetsOk);
+      setCheck('check-teams', teamsOk);
+    }
+
+    function setCheck(id, ok) {
+      const el = document.getElementById(id);
+      const icon = document.getElementById(`${id}-icon`);
+      el.className = `flex items-center gap-2 ${ok ? 'text-green-400' : 'text-slate-400'}`;
+      icon.textContent = ok ? '✅' : '⬜';
+    }
+
+    // ---- Helpers ----
+    function escHtml(str) {
+      const d = document.createElement('div');
+      d.appendChild(document.createTextNode(str || ''));
+      return d.innerHTML;
+    }
+
+    function showToast(msg, type = 'info') {
+      const t = document.createElement('div');
+      t.className = `toast ${type}`;
+      t.innerHTML = `<p class="font-medium text-sm">${escHtml(msg)}</p>`;
+      document.body.appendChild(t);
+      setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3500);
+    }
+
+  </script>
+</body>
+</html>
