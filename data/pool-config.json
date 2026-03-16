@@ -1,0 +1,7 @@
+{
+  "poolName": "Underdog Pick 6 Pool",
+  "gasEndpoint": "https://script.google.com/macros/s/AKfycbzASEJweN5qNdO5-6jqn_aqAjae9vUh2rkD5OKLvqgZFlCoYXVrWJ5SDygOCkN6Mobd/exec",
+  "sheetsCsvUrl": "https://docs.google.com/spreadsheets/d/e/2PACX-1vQXBBINVWKF8Rusm32O1Qibt6YtDCs0-t28Xi6qwaIs6YaUoc2aqcfMJNAp83MBV1EuGxh44pm2zqP8/pub?gid=1299102973&single=true&output=csv",
+  "tournamentYear": 2026,
+  "useManualOverrides": false
+}

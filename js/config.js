@@ -7,9 +7,39 @@
  * Admins set these values via admin.html.
  */
 
-const CONFIG_KEY   = 'pick6_config';
-const TEAMS_KEY    = 'pick6_teams';
-const OVERRIDES_KEY = 'pick6_overrides'; // Manual win-count overrides
+const CONFIG_KEY    = 'pick6_config';
+const TEAMS_KEY     = 'pick6_teams';
+const OVERRIDES_KEY = 'pick6_overrides';
+
+/**
+ * Load config and teams from static JSON files in the repo.
+ * This ensures every visitor's browser has the correct setup without
+ * needing to visit admin.html first.
+ * Call await AppConfig.init() at the top of each page before doing anything.
+ */
+async function initAppConfig() {
+  try {
+    const [cfgRes, teamsRes] = await Promise.all([
+      fetch('./data/pool-config.json').catch(() => null),
+      fetch('./data/teams.json').catch(() => null),
+    ]);
+
+    if (cfgRes?.ok) {
+      const staticCfg = await cfgRes.json();
+      // Static file always wins — ensures all browsers use the same config
+      AppConfig.set(staticCfg);
+    }
+
+    if (teamsRes?.ok) {
+      const staticTeams = await teamsRes.json();
+      if (staticTeams.length > 0) {
+        AppConfig.setTeams(staticTeams);
+      }
+    }
+  } catch (e) {
+    console.warn('Could not load static config files:', e);
+  }
+}
 
 const DEFAULT_CONFIG = {
   gasEndpoint:    '',  // Google Apps Script Web App URL (for form submissions)

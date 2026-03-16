@@ -197,6 +197,7 @@
 
     // ---- Init ----
     window.addEventListener('DOMContentLoaded', async () => {
+      await initAppConfig(); // Load config + teams from static JSON files
       const cfg = AppConfig.get();
       document.getElementById('pool-name').textContent = cfg.poolName || 'Pick 6 Pool';
       pick6Teams = AppConfig.getTeams();
