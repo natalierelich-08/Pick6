@@ -77,7 +77,16 @@ const AppConfig = {
  * [0] Timestamp, [1] Name, [2] Email, [3-8] Team1-Team6, [9] TOD
  */
 async function fetchEntries(csvUrl) {
-  const response = await fetch(csvUrl);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+  let response;
+  try {
+    response = await fetch(csvUrl, { signal: controller.signal });
+  } catch (e) {
+    clearTimeout(timeout);
+    throw new Error(`Could not reach Google Sheets: ${e.message}. Check your CSV URL in Admin.`);
+  }
+  clearTimeout(timeout);
   if (!response.ok) throw new Error(`Failed to fetch entries (HTTP ${response.status})`);
 
   const text = await response.text();
