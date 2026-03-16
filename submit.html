@@ -238,7 +238,9 @@
       let html = '';
       for (const [group, groupTeams] of Object.entries(byGroup)) {
         html += `<optgroup label="${escHtml(group)}">`;
-        for (const team of groupTeams) {
+        // Sort by seed ascending, then alphabetically within same seed
+        const sorted = groupTeams.slice().sort((a, b) => a.seed - b.seed || a.name.localeCompare(b.name));
+        for (const team of sorted) {
           const disabled = excludedDisplayNames.includes(team.displayName) && team.displayName !== currentValue;
           html += `<option value="${escHtml(team.displayName)}" ${disabled ? 'disabled' : ''}>
             ${escHtml(team.displayName)}
